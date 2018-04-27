@@ -1,0 +1,19 @@
+version: '3'
+services:
+  nyt-comments-mysql:
+    image: mysql:latest
+    ports:
+      - 3306:3306
+    volumes:
+      - ./volumes/mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: nyt-comments
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+  nyt-comments-mongo:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    volumes:
+      - ./volumes/mongo:/data/db
