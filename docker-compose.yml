@@ -7,8 +7,8 @@ services:
     volumes:
       - ./volumes/mysql:/var/lib/mysql
     environment:
-      MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: nyt-comments
+      MYSQL_ROOT_PASSWORD: password
       MYSQL_USER: user
       MYSQL_PASSWORD: password
   nyt-comments-mongo:
