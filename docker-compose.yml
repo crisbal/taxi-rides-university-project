@@ -1,19 +1,27 @@
 version: '3'
 services:
-  nyt-comments-mysql:
-    image: mysql:latest
-    ports:
-      - 3306:3306
-    volumes:
-      - ./volumes/mysql:/var/lib/mysql
-    environment:
-      MYSQL_DATABASE: nyt-comments
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-  nyt-comments-mongo:
-    image: mongo:latest
-    ports:
-      - 27017:27017
-    volumes:
-      - ./volumes/mongo:/data/db
+    taxi-rides-mysql:
+        hostname: taxi-rides-mysql
+        image: mysql:latest
+        ports:
+            - 3306:3306
+        volumes:
+            - ./volumes/mysql:/var/lib/mysql
+            - ./.config/mysql:/etc/mysql/conf.d
+        environment:
+            MYSQL_DATABASE: taxi-rides
+            MYSQL_ROOT_PASSWORD: password
+            MYSQL_USER: user
+            MYSQL_PASSWORD: password
+    taxi-rides-mongo:
+        image: mongo:latest
+        ports:
+            - 27017:27017
+        volumes:
+            - ./volumes/mongo:/data/db
+    taxi-rides-phpmyadmin:
+        image: phpmyadmin/phpmyadmin:latest
+        ports:
+          - 8080:80
+        environment:
+            PMA_ARBITRARY: 1
