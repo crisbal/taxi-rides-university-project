@@ -13,10 +13,14 @@ cursor = connection.cursor()
 
 add_ride_query = """
     INSERT INTO `rides`
-    (`taxi_id`, `trip_start_timestamp`, `trip_end_timestamp`, `trip_seconds`, `trip_miles`, `fare`, `tips`, `tolls`, `extras`, `payment_type`, `start_location`, `end_location`)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, {0}, {1})
+    (`taxi_id`, `trip_start_timestamp`, `trip_end_timestamp`, `trip_seconds`, `trip_miles`, `fare`, `tips`, `tolls`, `extras`, `payment_type`, `start_location`, `end_location`, `company_id`)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, {0}, {1}, %s)
 """
-
+add_company_query = """
+    INSERT INTO `companies`
+    (`id`, `name`)
+    VALUES (%s, %s)
+"""
 
 folder, _ = os.path.split(__file__)
 
@@ -32,6 +36,23 @@ for FILE in FILES:
 
         for ride in islice(rides, 1000):
             ride = dict(zip(header, ride))
+
+            # check if company exists inside the companies table
+            # if it does not exists create it
+            if ride['company'] != '': 
+                company_id = ride['company']
+                ride['company'] = int(ride['company'])
+                # a company is set
+                try:
+                    cursor.execute(
+                        add_company_query,
+                        [int(company_id), column_remapping['company'][company_id]]
+                    )
+                except mysql.connector.Error as err:
+                    #print(err)
+                    pass
+            else:
+                ride['company'] = None
 
             ride['taxi_id'] = ride['taxi_id'] if ride['taxi_id'] != '' else None 
 
@@ -78,9 +99,9 @@ for FILE in FILES:
                 ride['tips'],
                 ride['tolls'],
                 ride['extras'],
-                ride['payment_type']
+                ride['payment_type'],
+                ride['company']
             ]
-
             try:
                 cursor.execute(
                     add_ride_query_with_points,

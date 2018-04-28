@@ -9,8 +9,18 @@ if __name__ == "__main__":
 
     drop_table = "DROP TABLE IF EXISTS `{}`"
 
-    TABLES = {}
-    TABLES["rides"] = """
+    TABLES = ["companies", "rides"]
+    DDL = {}
+
+    DDL["companies"] = """
+        CREATE TABLE `companies` (
+            `id` int NOT NULL AUTO_INCREMENT,
+            `name` text,
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB
+    """
+
+    DDL["rides"] = """
         CREATE TABLE `rides` (
             `id` int NOT NULL AUTO_INCREMENT,
             `taxi_id` int,
@@ -25,22 +35,28 @@ if __name__ == "__main__":
             `payment_type` text,
             `start_location` POINT,
             `end_location` POINT,
-            PRIMARY KEY (`id`)
+            `company_id` int,
+
+            PRIMARY KEY (`id`),            
+            FOREIGN KEY (company_id)
+                REFERENCES companies(id)
+                ON UPDATE CASCADE ON DELETE CASCADE
         ) ENGINE=InnoDB
     """
 
     cursor = connection.cursor()
 
-    for name, query in TABLES.items():
+    cursor.execute("SET foreign_key_checks = 0")
+    for table_name in TABLES:
         try:
-            print(f"Creating table {name}")
-            cursor.execute(drop_table.format(name))
-            cursor.execute(query)
+            print(f"Creating table {table_name}")
+            cursor.execute(drop_table.format(table_name))
+            cursor.execute(DDL[table_name])
         except mysql.connector.Error as err:
             print(f"\t {err.msg}")
         else:
             print("\t OK")
-
+    cursor.execute("SET foreign_key_checks = 1")
     cursor.close()
 
     connection.close()
