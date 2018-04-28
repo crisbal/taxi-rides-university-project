@@ -1,5 +1,6 @@
 import os
 import csv
+import json
 from itertools import islice
 
 import mysql.connector
@@ -12,14 +13,16 @@ cursor = connection.cursor()
 
 add_ride_query = """
     INSERT INTO `rides`
-    (`taxi_id`, `trip_start_timestamp`, `trip_end_timestamp`, `trip_seconds`, `trip_miles`, `fare`, `tips`, `tolls`, `extras`, `payment_type`)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    (`taxi_id`, `trip_start_timestamp`, `trip_end_timestamp`, `trip_seconds`, `trip_miles`, `fare`, `tips`, `tolls`, `extras`, `payment_type`, `start_location`, `end_location`)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, {0}, {1})
 """
+
 
 folder, _ = os.path.split(__file__)
 
-FILES = ['2016_01']
+column_remapping = json.load(open(folder + '/../dataset/column_remapping.json'))
 
+FILES = ['2016_01']
 for FILE in FILES:
     print(f"Importing {FILE} Rides")
     with open(folder + '/../dataset/chicago_taxi_trips_' + FILE + '.csv') as csvfile:
@@ -27,7 +30,7 @@ for FILE in FILES:
 
         header = next(rides) # skip header
 
-        for ride in islice(rides, 10000):
+        for ride in islice(rides, 1000):
             ride = dict(zip(header, ride))
 
             ride['taxi_id'] = ride['taxi_id'] if ride['taxi_id'] != '' else None 
@@ -43,6 +46,28 @@ for FILE in FILES:
             ride['tolls'] = float(ride['tolls']) if ride['tolls'] != '' and ride['tolls'] != '0.00' else None
             ride['extras'] = float(ride['extras']) if ride['extras'] != '' and ride['extras'] != '0.00' else None
 
+            ride['pickup_latitude'] = ride['pickup_latitude'] if ride['pickup_latitude'] != '' else None 
+            ride['pickup_longitude'] = ride['pickup_longitude'] if ride['pickup_longitude'] != '' else None
+
+            ride['dropoff_latitude'] = ride['dropoff_latitude'] if ride['dropoff_latitude'] != '' else None 
+            ride['dropoff_longitude'] = ride['dropoff_longitude'] if ride['dropoff_longitude'] != '' else None
+
+            if ride['pickup_latitude'] is None or ride['pickup_longitude'] is None:
+                pickup_location = "null" 
+            else:
+                pickup_latitude = float(column_remapping['pickup_latitude'][ride['pickup_latitude']])
+                pickup_longitude = float(column_remapping['pickup_longitude'][ride['pickup_longitude']])
+                pickup_location = "ST_GeomFromText('POINT({} {})')".format(pickup_latitude, pickup_longitude)
+           
+            if ride['dropoff_latitude'] is None or ride['dropoff_longitude'] is None:
+                dropoff_location = "null"
+            else:
+                dropoff_latitude = float(column_remapping['dropoff_latitude'][ride['dropoff_latitude']])
+                dropoff_longitude = float(column_remapping['dropoff_longitude'][ride['dropoff_longitude']])
+                dropoff_location = "ST_GeomFromText('POINT({} {})')".format(ride['dropoff_latitude'], ride['dropoff_longitude'])
+           
+            add_ride_query_with_points = add_ride_query.format(pickup_location, dropoff_location)
+            
             to_insert = [
                 ride['taxi_id'], 
                 ride['trip_start_timestamp'],
@@ -58,7 +83,7 @@ for FILE in FILES:
 
             try:
                 cursor.execute(
-                    add_ride_query, 
+                    add_ride_query_with_points,
                     to_insert
                 )
             except mysql.connector.Error as err:

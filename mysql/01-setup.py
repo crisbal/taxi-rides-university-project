@@ -23,6 +23,8 @@ if __name__ == "__main__":
             `tolls` decimal(10, 2),
             `extras` decimal(10, 2),
             `payment_type` text,
+            `start_location` POINT,
+            `end_location` POINT,
             PRIMARY KEY (`id`)
         ) ENGINE=InnoDB
     """
