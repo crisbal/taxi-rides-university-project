@@ -32,6 +32,7 @@ if __name__ == "__main__":
             `tips` decimal(10, 2),
             `tolls` decimal(10, 2),
             `extras` decimal(10, 2),
+            `total` decimal(10, 2) AS (NULLIF((IFNULL(`fare`, 0) + IFNULL(`tips`, 0) + IFNULL(`tolls`, 0) + IFNULL(`extras`, 0)), 0)),
             `payment_type_id` int,
             
             PRIMARY KEY (`id`),
