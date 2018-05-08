@@ -1,3 +1,7 @@
+"""
+    This script will create the tables in the database
+"""
+
 import mysql.connector
 from mysql.connector import errorcode
 
@@ -9,8 +13,36 @@ if __name__ == "__main__":
 
     drop_table = "DROP TABLE IF EXISTS `{}`"
 
-    TABLES = ["companies", "rides"]
+    TABLES = ["payment_types", "payments", "companies", "taxis", "rides"]
     DDL = {}
+
+    DDL["payment_types"] = """
+        CREATE TABLE `payment_types` (
+            `id` int NOT NULL AUTO_INCREMENT,
+            `name` text,
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB
+    """
+
+    DDL["payments"] = """
+        CREATE TABLE `payments` (
+            `id` int NOT NULL AUTO_INCREMENT,
+            `ride_id` int,
+            `fare` decimal(10, 2),
+            `tips` decimal(10, 2),
+            `tolls` decimal(10, 2),
+            `extras` decimal(10, 2),
+            `payment_type_id` int,
+            
+            PRIMARY KEY (`id`),
+            FOREIGN KEY (ride_id)
+                REFERENCES rides(id)
+                ON UPDATE CASCADE ON DELETE CASCADE,
+            FOREIGN KEY (payment_type_id)
+                REFERENCES payment_types(id)
+                ON UPDATE CASCADE ON DELETE CASCADE
+        ) ENGINE=InnoDB
+    """
 
     DDL["companies"] = """
         CREATE TABLE `companies` (
@@ -20,26 +52,31 @@ if __name__ == "__main__":
         ) ENGINE=InnoDB
     """
 
+    DDL["taxis"] = """
+        CREATE TABLE `taxis` (
+            `id` int NOT NULL AUTO_INCREMENT,
+            `company_id` int,
+            PRIMARY KEY (`id`),
+            FOREIGN KEY (company_id)
+                REFERENCES companies(id)
+                ON UPDATE CASCADE ON DELETE CASCADE
+        ) ENGINE=InnoDB
+    """
+
     DDL["rides"] = """
         CREATE TABLE `rides` (
             `id` int NOT NULL AUTO_INCREMENT,
             `taxi_id` int,
-            `trip_start_timestamp` datetime,
-            `trip_end_timestamp` datetime,      
-            `trip_seconds` int,
-            `trip_miles` decimal(10, 2),
-            `fare` decimal(10, 2),
-            `tips` decimal(10, 2),
-            `tolls` decimal(10, 2),
-            `extras` decimal(10, 2),
-            `payment_type` text,
+            `start_timestamp` datetime,
+            `end_timestamp` datetime,      
+            `seconds` int,
+            `miles` decimal(10, 2),
             `start_location` POINT,
             `end_location` POINT,
-            `company_id` int,
 
-            PRIMARY KEY (`id`),            
-            FOREIGN KEY (company_id)
-                REFERENCES companies(id)
+            PRIMARY KEY (`id`),
+            FOREIGN KEY (taxi_id)
+                REFERENCES taxis(id)
                 ON UPDATE CASCADE ON DELETE CASCADE
         ) ENGINE=InnoDB
     """
