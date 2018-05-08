@@ -1,3 +1,5 @@
+import itertools
+
 import mysql.connector
 from mysql.connector import errorcode
 
@@ -17,3 +19,11 @@ def make_connection():
         raise Exception('MySQL Error')
         
     return connection
+
+def chunker(iterable, n):
+    it = iter(iterable)
+    while True:
+       chunk = tuple(itertools.islice(it, n))
+       if not chunk:
+           return
+       yield chunk
