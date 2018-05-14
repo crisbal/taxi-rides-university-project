@@ -10,7 +10,7 @@ from itertools import islice
 import mysql.connector
 from mysql.connector import errorcode
 
-from ..utils import make_connection, chunker
+from utils import make_connection, chunker
 
 def make_company_row(company):
     return [company['id'], company['name']]

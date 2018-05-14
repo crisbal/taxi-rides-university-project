@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
             i = 0 # for progress
             CHUNKER_SIZE = 1000
-            rides = islice(rides, 1000)
+            rides = islice(rides, 10000)
             for rides_chunk in chunker(rides, CHUNKER_SIZE):
                 rides_chunk = [embed_ride(ride, column_remapping) for ride in rides_chunk]
                 i += CHUNKER_SIZE
