@@ -1,8 +1,8 @@
 version: '3'
 services:
     taxi-rides-mysql:
-        hostname: taxi-rides-mysql
         image: mysql:latest
+        hostname: taxi-rides-mysql
         ports:
             - 3306:3306
         volumes:
@@ -15,13 +15,30 @@ services:
             MYSQL_PASSWORD: password
     taxi-rides-mongo:
         image: mongo:latest
+        hostname: taxi-rides-mongo
         ports:
             - 27017:27017
         volumes:
             - ./volumes/mongo:/data/db
+        environment:
+            MONGO_INITDB_DATABASE: taxiRides
+            MONGO_INITDB_ROOT_USERNAME: root
+            MONGO_INITDB_ROOT_PASSWORD: password
     taxi-rides-phpmyadmin:
         image: phpmyadmin/phpmyadmin:latest
         ports:
           - 8080:80
         environment:
             PMA_ARBITRARY: 1
+    taxi-rides-mongo-express:
+        depends_on: 
+            - taxi-rides-mongo
+        image: mongo-express
+        restart: always
+        ports:
+            - 8081:8081
+        environment:
+            ME_CONFIG_MONGODB_SERVER: taxi-rides-mongo
+            ME_CONFIG_MONGODB_AUTH_DATABASE: taxiRides
+            ME_CONFIG_MONGODB_ADMINUSERNAME: root
+            ME_CONFIG_MONGODB_ADMINPASSWORD: password

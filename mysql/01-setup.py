@@ -5,7 +5,7 @@
 import mysql.connector
 from mysql.connector import errorcode
 
-from utils import make_connection 
+from ..utils import make_connection 
 
 if __name__ == "__main__":
     connection = make_connection()

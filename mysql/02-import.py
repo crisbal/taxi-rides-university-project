@@ -10,7 +10,7 @@ from itertools import islice
 import mysql.connector
 from mysql.connector import errorcode
 
-from utils import make_connection, chunker
+from ..utils import make_connection, chunker
 
 def make_company_row(company):
     return [company['id'], company['name']]
@@ -158,7 +158,7 @@ if __name__ == "__main__":
             i = 0 # for progress
             ride_id = 1
             CHUNKER_SIZE = 1000
-            #rides = islice(rides, 100000)
+            rides = islice(rides, 10000)
             for rides_chunk in chunker(rides, CHUNKER_SIZE):
                 i += CHUNKER_SIZE
                 if (i % 10000 == 0):
@@ -182,11 +182,6 @@ if __name__ == "__main__":
                     
                 except mysql.connector.Error as err:
                     print(err)
-                    # cursor.execute('show profiles')
-                    # for row in cursor:
-                    #    print(row)       
-
-                
 
             connection.commit()
 
