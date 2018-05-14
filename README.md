@@ -2,6 +2,9 @@
 
 University project to compare and benchmark different database architecture and data modeling solutions.
 
+## Dataset
+
+[Chicago Taxi Rides 2016](https://www.kaggle.com/chicago/chicago-taxi-rides-2016) by [City of Chicago](https://www.kaggle.com/chicago)
 
 ## Queries
 
@@ -11,6 +14,17 @@ University project to compare and benchmark different database architecture and 
 ```sql
 SELECT avg(fare) as avg_fare
 FROM payments
+```
+
+```js
+db.rides.aggregate([
+    {
+        $group: { 
+            _id: null, 
+            fare: { $avg:"$payment.fare" } 
+        }
+    }
+])
 ```
 
 * Average Total
@@ -41,6 +55,7 @@ GROUP BY companies.id
 ORDER BY n_trips DESC
 LIMIT 10
 ```
+
 * Top 10 taxis with most average tip and at least 10 trips
     
 ```sql
