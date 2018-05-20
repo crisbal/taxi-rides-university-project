@@ -6,7 +6,7 @@ import os
 import csv
 import json
 from itertools import islice
-
+from collections import defaultdict
 import mysql.connector
 from mysql.connector import errorcode
 
@@ -47,13 +47,14 @@ def clean_ride(ride, column_remapping):
         dropoff_longitude = float(column_remapping['dropoff_longitude'][ride['dropoff_longitude']])
         ride["dropoff_location"] = "POINT({} {})".format(dropoff_latitude, dropoff_longitude)
     
-    ride['taxi_id'] = ride['taxi_id'] if ride['taxi_id'] != '' else None 
+    ride['taxi_id'] = int(ride['taxi_id']) if ride['taxi_id'] != '' else None 
+    ride['company'] = int(ride['company']) if ride['company'] != '' else None 
 
     return ride
 
-def make_ride_row(ride):
+def make_ride_row(ride, taxi_services_dict):
     return [
-        ride['taxi_id'], 
+        taxi_services_dict[(ride['taxi_id'], ride['company'])], 
         ride['trip_start_timestamp'],
         ride['trip_end_timestamp'],
         ride['trip_seconds'],
@@ -73,6 +74,10 @@ def make_payment_row(ride, payments_remapping, ride_id):
     ]
 
 if __name__ == "__main__":
+    folder, _ = os.path.split(__file__)
+    
+    CONFIG = json.load(open(folder + '/../config.json'))
+
     connection = make_connection()
     cursor = connection.cursor()
     cursor.execute("SET AUTOCOMMIT=0")
@@ -94,7 +99,7 @@ if __name__ == "__main__":
     
     add_ride_query = """
         INSERT INTO `rides`
-        (`taxi_id`, `start_timestamp`, `end_timestamp`, `seconds`, `miles`, `start_location`, `end_location`)
+        (`taxi_service_id`, `start_timestamp`, `end_timestamp`, `seconds`, `miles`, `start_location`, `end_location`)
         VALUES (%s, %s, %s, %s, %s, ST_GEOMFROMTEXT(%s), ST_GEOMFROMTEXT(%s))
     """
     
@@ -104,14 +109,13 @@ if __name__ == "__main__":
         VALUES (%s, %s)
     """
 
-    add_taxi_query = """
-        INSERT INTO `taxis`
-        (`id`, `company_id`)
-        VALUES (%s, %s)
+    add_taxi_service_query = """
+        INSERT INTO `taxi_services`
+        (`id`, `taxi_id`, `company_id`)
+        VALUES (%s, %s, %s)
     """
 
 
-    folder, _ = os.path.split(__file__)
     column_remapping = json.load(open(folder + '/../dataset/column_remapping.json'))
     payments_remapping = {}
 
@@ -127,6 +131,7 @@ if __name__ == "__main__":
         connection.commit()
     
     print("Importing companies.csv")
+    n_companies = 0
     with open(folder + '/../dataset/companies.csv') as csvfile:
         companies = csv.DictReader(csvfile)
         for companies_chunk in chunker(companies, 3):
@@ -135,21 +140,29 @@ if __name__ == "__main__":
                 add_company_query,
                 companies_chunk
             )
+            n_companies += 3
         connection.commit()
+    print(f"Imported {n_companies} companies")
 
-    print("Importing taxis.csv")
-    with open(folder + '/../dataset/taxis.csv') as csvfile:
-        taxis = csv.DictReader(csvfile)
-        for taxi in taxis:
-            taxi['company_id'] = taxi['company_id'] if taxi['company_id'] != '' else None 
+    print("Importing taxi_services.csv")
+    n_taxi_services = 0
+    taxi_services_dict = {}
+    with open(folder + '/../dataset/taxi_services.csv') as csvfile:
+        taxi_services = csv.DictReader(csvfile)
+        for taxi_service in taxi_services:
+            taxi_service['taxi_id'] = int(taxi_service['taxi_id']) if taxi_service['taxi_id'] != '' else None
+            taxi_service['company_id'] = int(taxi_service['company_id']) if taxi_service['company_id'] != '' else None
+            taxi_service['id'] = int(taxi_service['id']) if taxi_service['id'] != '' else None
             cursor.execute(
-                add_taxi_query,
-                [ taxi['id'], taxi['company_id'] ]
+                add_taxi_service_query,
+                [ taxi_service['id'], taxi_service['taxi_id'], taxi_service['company_id'] ]
             )
+            taxi_services_dict[(taxi_service['taxi_id'], taxi_service['company_id'])] = taxi_service['id']
+            n_taxi_services += 1
         connection.commit()
-
-
-    FILES = ['2016_01']
+    print(f"Imported {n_taxi_services} taxi_services")
+    
+    FILES = CONFIG['FILES']
     for FILE in FILES:
         print(f"Importing {FILE} Rides")
         with open(folder + '/../dataset/chicago_taxi_trips_' + FILE + '.csv') as csvfile:
@@ -158,15 +171,12 @@ if __name__ == "__main__":
             i = 0 # for progress
             ride_id = 1
             CHUNKER_SIZE = 1000
-            rides = islice(rides, 10000)
+            if CONFIG['IMPORT_LIMIT'] > 0:
+                rides = islice(rides, CONFIG['IMPORT_LIMIT'])
             for rides_chunk in chunker(rides, CHUNKER_SIZE):
-                i += CHUNKER_SIZE
-                if (i % 10000 == 0):
-                    print(f"Progress: {i}")
-
                 rides_chunk = [clean_ride(ride, column_remapping) for ride in rides_chunk]
                 payments_chunk = [make_payment_row(ride, payments_remapping, ride_id) for ride, ride_id in zip(rides_chunk, range(ride_id, ride_id + CHUNKER_SIZE + 1))]
-                rides_chunk = [make_ride_row(ride) for ride in rides_chunk]
+                rides_chunk = [make_ride_row(ride, taxi_services_dict) for ride in rides_chunk]
                 ride_id += len(rides_chunk)
                 
                 # cursor.execute('set profiling = 1')
@@ -179,9 +189,12 @@ if __name__ == "__main__":
                         add_payment_query,
                         payments_chunk
                     )
-                    
                 except mysql.connector.Error as err:
                     print(err)
+
+                i += CHUNKER_SIZE
+                if (i % 10000 == 0):
+                    print(f"Progress: {i}")
 
             connection.commit()
 

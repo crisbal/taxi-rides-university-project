@@ -19,16 +19,19 @@ def embed_ride(ride, column_remapping):
         ('company', '107'), 
         ('pickup_latitude', '199'), ('pickup_longitude', '510'), 
         ('dropoff_latitude', '199'), ('dropoff_longitude', '510'), ('taxi', {'id': '85'})]"""
+    
+    ride['taxi_service'] = {}
+
     if ride['taxi_id'] != '':
-        ride['taxi'] = { 'id': int(ride['taxi_id']) }
-        ride['company'] = ride.get('company')
-        if ride['company']:
-            company_id = ride['company']
-            ride['taxi']['company'] = {
-                'id': int(company_id),
-                'name': column_remapping['company'][company_id]
-            } 
-        
+        ride['taxi_service']['taxi'] = { 'id': int(ride['taxi_id']) }
+    
+    if ride['company'] != '':
+        company_id = ride['company']
+        ride['taxi_service']['company'] = {
+            'id': int(company_id),
+            'name': column_remapping['company'][company_id]
+        } 
+
     del ride['taxi_id']
     del ride['company']
 
@@ -101,16 +104,17 @@ def embed_ride(ride, column_remapping):
     return ride
 
 if __name__ == '__main__':
-        
+    folder, _ = os.path.split(__file__)
+    
+    CONFIG = json.load(open(folder + '/../config.json'))
+
     client = MongoClient('localhost', 27017, username='root', password='password')
     db = client["taxiRides"]
     rides_collection = db["rides"]
     
-    folder, _ = os.path.split(__file__)
-    
     column_remapping = json.load(open(folder + '/../dataset/column_remapping.json'))
     
-    FILES = ['2016_01']
+    FILES = CONFIG['FILES']
     for FILE in FILES:
         print(f"Importing {FILE} Rides")
         with open(folder + '/../dataset/chicago_taxi_trips_' + FILE + '.csv') as csvfile:
@@ -118,11 +122,13 @@ if __name__ == '__main__':
 
             i = 0 # for progress
             CHUNKER_SIZE = 1000
-            rides = islice(rides, 10000)
+            if CONFIG['IMPORT_LIMIT'] > 0:
+                rides = islice(rides, CONFIG['IMPORT_LIMIT'])
             for rides_chunk in chunker(rides, CHUNKER_SIZE):
                 rides_chunk = [embed_ride(ride, column_remapping) for ride in rides_chunk]
+                rides_collection.insert_many(rides_chunk)
+                
                 i += CHUNKER_SIZE
                 if (i % 10000 == 0):
                     print(f"Progress: {i}")
 
-                rides_collection.insert_many(rides_chunk)

@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     drop_table = "DROP TABLE IF EXISTS `{}`"
 
-    TABLES = ["payment_types", "payments", "companies", "taxis", "rides"]
+    TABLES = ["payment_types", "payments", "companies", "taxi_services", "rides"]
     DDL = {}
 
     DDL["payment_types"] = """
@@ -53,21 +53,23 @@ if __name__ == "__main__":
         ) ENGINE=InnoDB
     """
 
-    DDL["taxis"] = """
-        CREATE TABLE `taxis` (
+    DDL["taxi_services"] = """
+        CREATE TABLE `taxi_services` (
             `id` int NOT NULL AUTO_INCREMENT,
+            `taxi_id` int,
             `company_id` int,
             PRIMARY KEY (`id`),
             FOREIGN KEY (company_id)
                 REFERENCES companies(id)
-                ON UPDATE CASCADE ON DELETE CASCADE
+                ON UPDATE CASCADE ON DELETE CASCADE,
+            UNIQUE KEY `taxi_company` (`taxi_id`,`company_id`)
         ) ENGINE=InnoDB
     """
 
     DDL["rides"] = """
         CREATE TABLE `rides` (
             `id` int NOT NULL AUTO_INCREMENT,
-            `taxi_id` int,
+            `taxi_service_id` int,
             `start_timestamp` datetime,
             `end_timestamp` datetime,      
             `seconds` int,
@@ -76,8 +78,8 @@ if __name__ == "__main__":
             `end_location` POINT,
 
             PRIMARY KEY (`id`),
-            FOREIGN KEY (taxi_id)
-                REFERENCES taxis(id)
+            FOREIGN KEY (taxi_service_id)
+                REFERENCES taxi_services(id)
                 ON UPDATE CASCADE ON DELETE CASCADE
         ) ENGINE=InnoDB
     """
