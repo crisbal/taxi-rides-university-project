@@ -1,4 +1,4 @@
 {
     "FILES": ["2016_01"],
-    "IMPORT_LIMIT": 100000
+    "IMPORT_LIMIT": -1
 }

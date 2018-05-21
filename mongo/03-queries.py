@@ -4,10 +4,8 @@ from timeit import default_timer as timer
 from statistics import mean, pstdev
 
 import yaml
-import mysql.connector
-from mysql.connector import errorcode
-
-from utils import make_connection, chunker
+import demjson
+from pymongo import MongoClient
 
 TRIES = 10
 
@@ -16,29 +14,37 @@ if __name__ == '__main__':
     queries = yaml.load(open(folder + '/../queries.yml'))
     benchmarks = json.load(open(folder + '/../benchmarks.json'))
     
-    connection = make_connection()
-    cursor = connection.cursor()
+    client = MongoClient('localhost', 27017, username='root', password='password')
+    db = client["taxiRides"]
+    rides_collection = db["rides"]
 
     for query_id, query in enumerate(queries):
+        query_id = str(query_id)
+        
         print(f"Benchmarking: {query['title']}")
-        print(f"\t{query['mysql']}")
+        param = demjson.decode(query['mongo']['query'])
+        print(f"\tExecuting {query['mongo']['type']}")
+        print(f"\t{param}")
 
-        benchmark = benchmarks.get(query_id, {})
+        benchmark = benchmarks.get(str(query_id), {})
         benchmark["title"] =  query['title']
-        benchmark["mysql"] = {}
+        benchmark["mongo"] = {}
 
-        times = []    
+        times = []
+        result = None
         for i in range(0, TRIES):
             start_time = timer()
-            cursor.execute(query['mysql'])
+            if query['mongo']['type'] == 'aggregate':
+                result = list(rides_collection.aggregate(param))
+            elif query['mongo']['type'] == 'count':
+                result = rides_collection.find(param).count()
             end_time = timer()
             times.append(end_time - start_time)
-            for row in cursor:
-                pass
-        
-        benchmark["mysql"]["times"] = times
+
+        benchmark["mongo"]["times"] = times
         benchmarks[query_id] = benchmark
         print(benchmarks)
+        print(f"Result: {result}")
         print(f"First execution: {times[0]}")
         print(f"Second execution: {times[1]}")
         print(f"Average over {TRIES} execution: {mean(times)}")
@@ -46,6 +52,7 @@ if __name__ == '__main__':
         print()
         print("-" * 40)
         print()
-    
+
     json.dump(benchmarks, open(folder + '/../benchmarks.json', 'w'))
+    
 

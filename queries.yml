@@ -1,0 +1,30 @@
+---
+-
+    title: 'Number of rides longer than 4 miles'
+    mysql: |
+        SELECT COUNT(*)
+        FROM rides
+        WHERE miles > 4
+    mongo: 
+        type: count
+        query: |
+            {
+                trip_miles: { $gt: 4 }
+            }
+- 
+    title: 'Average fare'
+    mysql: |
+        SELECT avg(fare) as avg_fare
+        FROM payments
+
+    mongo: 
+        type: aggregate
+        query: |
+            [
+                {
+                    $group: { 
+                        _id: null, 
+                        fare: { $avg: "$payment.fare" } 
+                    }
+                }
+            ]
