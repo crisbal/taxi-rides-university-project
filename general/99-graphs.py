@@ -19,7 +19,6 @@ if __name__ == '__main__':
     ]
     means = [mean(times) if times else 0 for times in list_of_times]
     stds = [pstdev(times) if times else 0 for times in list_of_times]
-    print(means)
     p_mysql = ax.bar(ind-width, means, width, color='#f44141', bottom=0, yerr=stds)
     
     mysql_index = False
@@ -55,7 +54,7 @@ if __name__ == '__main__':
     ax.set_xticklabels([f"Query {i+1}" for i in range(0, len(benchmarks))])
     ax.set_ylabel("Seconds")
     
-    colors = [p_mysql[0], p_mongo[1]]
+    colors = [p_mysql[0], p_mongo[0]]
     labels = ['MySQL', 'Mongo']
     if mysql_index:
         colors.insert(1, p_mysql_index[0])
@@ -68,3 +67,4 @@ if __name__ == '__main__':
     ax.autoscale_view()
 
     plt.show()
+    fig.savefig(folder + '/../.images/benchmarks.png', dpi=fig.dpi*2)

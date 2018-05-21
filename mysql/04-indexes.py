@@ -7,7 +7,7 @@ from utils import make_connection, chunker
 
 
 INDEXES = {
-    'rides': ['miles', 'start_timestamp', 'end_timestamp'],
+    'rides': ['miles', 'seconds', 'start_timestamp', 'end_timestamp'],
     'payments': ['fare']
 }
 

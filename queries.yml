@@ -106,18 +106,50 @@
             }
 
 - 
-    title: 'Trips longer than 1h'
-    skip: true
+    title: 'Amount of trips longer than 1h'
     mysql: |
         SELECT count(*) FROM rides 
-        WHERE TIMEDIFF(hour, end_timestamp, start_timestamp) > 1
+        WHERE time_to_sec(TIMEDIFF(end_timestamp, start_timestamp)) / 3600 > 1
     mongo: 
         type: aggregate
         query: |
+            [
+                {
+                    '$project': {
+                        'hours': {
+                            '$divide': [
+                                    {
+                                        '$subtract': ['$trip_end_timestamp', '$trip_start_timestamp']
+                                    }, 
+                                    1000*60*60
+                            ]
+                        }
+                    }
+                },
+                {
+                    '$match': {
+                        'hours': {
+                            '$gt': 1
+                        }
+                    }                    
+                },
+                {
+                    '$count': 'trips_longer_than_1_hour'
+                }
+            ]
+- 
+    title: 'Amounts of trips longer than 10minutes and longer than 2 miles'
+    mysql: |
+        SELECT count(*) FROM rides 
+        WHERE seconds > 10*60 AND miles > 2
+    mongo:
+        type: count
+        query: |
             {
-               '$project': {
-                   'hours': {
-                       '$subtract': ['$trip_end_timestamp', '$trip_start_timestamp']
-                   }
-               }
+                'trip_seconds': {
+                    '$gt': 10*60
+                },
+                'trip_miles': {
+                    '$gt': 2
+                }
             }

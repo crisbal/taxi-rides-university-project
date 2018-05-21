@@ -1,7 +1,7 @@
 import sys
 from pymongo import MongoClient
 
-INDEXES = ['trip_miles', 'payment.fare', 'trip_start_timestamp', 'trip_end_timestamp']
+INDEXES = ['trip_miles', 'trip_seconds', 'payment.fare', 'trip_start_timestamp', 'trip_end_timestamp']
 
 if __name__ == '__main__':
     drop_index = False 
