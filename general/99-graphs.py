@@ -51,7 +51,7 @@ if __name__ == '__main__':
     
     ax.set_title('Queries Performance')
     ax.set_xticks(ind + width / 2)
-    ax.set_xticklabels([f"Query {i+1}" for i in range(0, len(benchmarks))])
+    ax.set_xticklabels([f"Query #{int(i)+1}" for i in benchmarks])
     ax.set_ylabel("Seconds")
     
     colors = [p_mysql[0], p_mongo[0]]

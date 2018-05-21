@@ -35,4 +35,5 @@ perf: perf-clean perf-mysql perf-mongo
 
 graphs:
 	test -f benchmarks.json
+	python general/98-detailed-results.py
 	python general/99-graphs.py
