@@ -9,7 +9,7 @@ import-mysql:
 
 import-mongo:
 	python mongo/01-setup.py
-	python mongo/02-import.py 
+	python mongo/02-import.py drop
 
 import: import-mysql import-mongo
 
@@ -18,9 +18,21 @@ perf-clean:
 	echo "{}" > benchmarks.json
 	
 perf-mysql:
-	python mysql/03-queries.py
+	python mysql/04-indexes.py drop
+	python mysql/03-queries.py noindex
+
+	python mysql/04-indexes.py create 	
+	python mysql/03-queries.py indexed
 
 perf-mongo:
-	python mongo/03-queries.py
+	python mongo/04-indexes.py drop
+	python mongo/03-queries.py noindex
+
+	python mongo/04-indexes.py create 	
+	python mongo/03-queries.py indexed
 
 perf: perf-clean perf-mysql perf-mongo
+
+graphs:
+	test -f benchmarks.json
+	python general/99-graphs.py

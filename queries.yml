@@ -9,7 +9,7 @@
         type: count
         query: |
             {
-                trip_miles: { $gt: 4 }
+                'trip_miles': { '$gt': 4 }
             }
 - 
     title: 'Average fare'
@@ -22,9 +22,102 @@
         query: |
             [
                 {
-                    $group: { 
-                        _id: null, 
-                        fare: { $avg: "$payment.fare" } 
+                    '$group': { 
+                        '_id': None, 
+                        'fare': { '$avg': "$payment.fare" } 
                     }
                 }
             ]
+-
+    title: 'Top 10 company names with most trips'
+    mysql: |
+        SELECT companies.name, COUNT(*) as n_trips 
+        FROM rides JOIN taxi_services ON rides.taxi_service_id = taxi_services.id 
+            JOIN companies ON taxi_services.company_id = companies.id
+        GROUP BY companies.id
+        ORDER BY n_trips DESC
+        LIMIT 10
+    mongo:
+        type: aggregate
+        query: |
+            [
+                {
+                    '$group': { 
+                        '_id': '$taxi_service.company.id',
+                        'company_name': { '$first': '$taxi_service.company.name' },
+                        'rides': { '$sum': 1 }
+                    }
+                },
+                {
+                    '$sort': { 'rides': -1 }
+                },
+                {
+                    '$limit': 10
+                }
+            ]
+- 
+    title: 'Top 10 taxis with most average tip and at least 10 trips'
+    skip: true
+    mysql: |
+        SELECT taxi_services.taxi_id, avg(payments.tips) as tips_avg, count(*) as n_trips
+        FROM payments JOIN rides ON payments.ride_id = rides.id
+            JOIN taxi_services ON taxi_services.id = rides.taxi_service_id
+        GROUP BY taxi_services.taxi_id
+        HAVING count(*) > 10
+        ORDER BY tips_avg DESC
+        LIMIT 10
+    mongo: 
+        type: aggregate
+        query: |
+            [
+                {
+                    '$group': { 
+                        '_id': '$taxi_service.taxi.id',
+                        'tips_avg': { '$avg': '$payment.tips' },
+                        'n_trips': { '$sum': 1 }
+                    }
+                },
+                {
+                    '$match': {
+                        'n_trips': { '$gt': 10 }
+                    }
+                },
+                {
+                    '$sort': { 'tips_avg': -1 }
+                },
+                {
+                    '$limit': 10
+                }
+            ]
+- 
+    title: 'Amount of trips between the 1st and the 12th of January'
+    mysql: |
+        SELECT count(*) FROM rides 
+        WHERE start_timestamp >= '2016-01-01 00:00:00'
+        AND start_timestamp < '2016-01-12 00:00:00'
+    mongo: 
+        type: count
+        query: |
+            {
+                'trip_start_timestamp': {
+                    '$gte': dateutil.parser.parse("2016-01-01 00:00:00"),
+                    '$lt': dateutil.parser.parse("2016-01-12 00:00:00")
+                }
+            }
+
+- 
+    title: 'Trips longer than 1h'
+    skip: true
+    mysql: |
+        SELECT count(*) FROM rides 
+        WHERE TIMEDIFF(hour, end_timestamp, start_timestamp) > 1
+    mongo: 
+        type: aggregate
+        query: |
+            {
+               '$project': {
+                   'hours': {
+                       '$subtract': ['$trip_end_timestamp', '$trip_start_timestamp']
+                   }
+               }
+            }
