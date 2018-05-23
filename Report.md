@@ -65,7 +65,7 @@ Tabelle create:
     * `company_id`, riferimento alla tabella `companies`
 * `payment_types`, usata per tenere traccia dei vari metodi di pagamento
     * `id`, *PRIMARY KEY*, autoincrementante
-    * `name`, *TEXT*
+    * `name`, *TEXT*, il testo associato al metodo di pagamento
 *  `payments`
     *  `id` del pagamento, autoincrementante
     *  `ride_id`, riferimento alla tabella `ride`
@@ -137,22 +137,215 @@ Gli script in questione sono
 
 * `general/00-dataset.py` per il preprocessing del dataset
 * `{mysql|mongo}/01-setup.py` per la creazione delle tabelle/collezioni 
-* `{mysql|mongo}/02-import.py` per l'importazione 
+* `{mysql|mongo}/02-import.py` per l'elaborazione delle righe e l'importazione 
 
 ### MySQL
 
-Per velocizzare l'importazione in MySQL ho deciso di fare un pre-processing del dataset per estrarre per prima cosa le tabelle secondarie (ad esempio i dettagli delle compagnie, i metodi di pagamento) in modo da ottenere dei file più piccoli contenenti solo le informazioni univoche da importare nel database.
+Per velocizzare l'importazione in MySQL ho deciso di fare un pre-processing del dataset per estrarre, per prima cosa, le tabelle secondarie (ad esempio i dettagli delle compagnie, i metodi di pagamento) in modo da ottenere dei file più piccoli contenenti solo le informazioni univoche da importare nel database.
 In questo modo evito di dover controllare (per ogni riga del dataset) se esistono già le tabelle correlate alla corsa (e quindi evito di fare più di una `SELECT` per ogni inserimento riga). 
 
-Quindi prima analizzo tutte le righe del file senza inserirle (che ha un costo temporale irrisorio), produco un file per tutte le compagnie (`companies.csv`), uno per i metodi di pagamento (`payment_types.csv`) ed uno per la tupla `(taxi_id, company_id)`, li importo nella rispettive tabelle mantenendo gli ID presenti nel file CSV, e solo in seguito importo le corse (tabella `rides`) le cui righe possono essere inserite direttamente, velocizzando notevolmente il processo di import.
+Prima analizzo tutte le righe del file senza inserirle (che ha un costo temporale irrisorio rispetto all'esecuzione di svariate `SELECT` per ogni `ride`), produco un file per tutte le compagnie (`companies.csv`), uno per i metodi di pagamento (`payment_types.csv`) ed uno per la tupla `(taxi_id, company_id)` (`taxi_services.csv`), li importo nella rispettive tabelle mantenendo gli ID presenti nel file CSV, e solo in seguito importo le corse (tabella `rides`) le cui righe possono essere inserite direttamente, velocizzando notevolmente il processo di import.
 
 Un altro espediente che ho usato per velocizzare l'importazione del dataset in MySQL è stato quella di usare il metodo `insert_many` al posto che `insert_one`, in questo modo al posto che inserire una riga alla volta ne inserisco 1000 per volta, anche questo velocizza notevolmente l'inserimento.
 
-L'ultima tecnica che ho usato per velocizzare l'inserimento è stata quella di disabilitare al momento dell'import (per poi riattivarlo) l'autocommit (che eseguo solo una volta a fine file), i controlli sulle foreign keys (che non mi servono in fase di import in quanto sono sicuro che i dati che importo siano consistenti) e sui valori unici (come prima).
+L'ultima tecnica che ho usato per velocizzare l'inserimento è stata quella di disabilitare al momento dell'import (per poi riattivarlo) l'autocommit (che eseguo solo una volta a fine di ogni file, una volta ogni 1.5Milioni di righe circa ), i controlli sulle foreign keys (che non mi servono in fase di import in quanto sono sicuro che i dati che importo siano consistenti) e sui valori unici (per lo stesso motivo).
 
 ### MongoDB
 
 Anche qui ho preferito usare il metodo `insert_many` al posto che `insert` al fine di inserire 1000 documenti alla volta anzichè 1. Non è stato necessario fare altre particolari operazioni per velocizzare l'import dentro MongoDB.
 
+### Tempi di importazione
+
+| DBMS  | Righe Importate | Tempo di Import |
+| ----- | --------------- | --------------- |
+| MySQL | 10k             | 5.5s            |
+| Mongo | 10k             | 2.4s            |
+| MySQL | 100k            | 15s             |
+| Mongo | 100k            | 10.9s           |
+| MySQL | 1.7M            | 3m19s           |
+| Mongo | 1.7M            | 3m1s            |
+
 ## Query
+
+Ogni query è stata eseguita per 10 volte e per ogni esecuzione si è tenuto traccia del tempo. In seguito è stato calcolato il tempo medio e la deviazione standard. Ogni query è stata eseguita con e senza indici appositi.
+
+### #1: Numero di corse più lunghe di 4 Miglia
+
+
+**MySQL**
+
+```sql
+SELECT COUNT(*)
+FROM rides
+WHERE miles > 4
+```
+
+**MongoDB**
+
+```js
+db.rides.find({
+    'trip_miles': { '$gt': 4 }
+}).count()
+```
+
+Ottimizzata creando indice sul campo `miles`.
+
+
+### #2: Prezzo medio delle corse
+
+**MySQL**
+
+```sql
+SELECT avg(fare) as avg_fare
+FROM payments
+```
+
+**MongoDB**
+
+```js
+db.rides.aggregate([
+    {
+        '$group': { 
+            '_id': None, 
+            'fare': { '$avg': "$payment.fare" } 
+        }
+    }
+])
+```
+
+Solo su MySQL aggiungendo un indice sulla colonna `payments.fare` si ottiene un miglioramento (seppur minimale) delle performance. E' osservabile infatti che aggiungendo l'indice, nonostante non si tratti di un'operazione di ricerca, questo indice viene usato nell'operazione di `AVG()` come mostrato dall'EXPLAIN della query:
+
+![](.images/index_avg_fare.png)
+
+
+### #3: Le prime 10 compagnie che hanno fatto più viaggi
+
+**MySQL**
+
+```sql
+SELECT companies.name, COUNT(*) as n_trips 
+FROM rides JOIN taxi_services ON rides.taxi_service_id = taxi_services.id 
+    JOIN companies ON taxi_services.company_id = companies.id
+GROUP BY companies.id
+ORDER BY n_trips DESC
+LIMIT 10
+```
+
+**MongoDB**
+
+```js
+db.rides.aggregate([
+    {
+        '$group': { 
+            '_id': '$taxi_service.company.id',
+            'company_name': { '$first': '$taxi_service.company.name' },
+            'rides': { '$sum': 1 }
+        }
+    },
+    {
+        '$sort': { 'rides': -1 }
+    },
+    {
+        '$limit': 10
+    }
+])
+```
+
+### #5: Numero di corse tra il 1° e il 12° Gennaio 2016
+
+**MySQL**
+
+```sql
+SELECT count(*) FROM rides 
+WHERE start_timestamp >= '2016-01-01 00:00:00'
+AND start_timestamp < '2016-01-12 00:00:00'
+```
+
+**MongoDB**
+
+```js
+db.rides.find([
+    {
+        'trip_start_timestamp': {
+            '$gte': new Date("2016-01-01 00:00:00"),
+            '$lt': new Date("2016-01-12 00:00:00")
+        }
+    }
+]).count()
+```
+
+Ottimizzata aggiungendo un indice su `start_timestamp`
+
+### #6: Numero di viaggi più lunghi di 1 ora (lunghezza calcolata come time difference)
+
+**MySQL**
+
+```sql
+SELECT count(*) FROM rides 
+WHERE time_to_sec(TIMEDIFF(end_timestamp, start_timestamp)) / 3600 > 1
+```
+
+**MongoDB**
+
+```js
+db.rides.aggregate([
+    {
+        '$project': {
+            'hours': {
+                '$divide': [
+                        {
+                            '$subtract': ['$trip_end_timestamp', '$trip_start_timestamp']
+                        }, 
+                        1000*60*60
+                ]
+            }
+        }
+    },
+    {
+        '$match': {
+            'hours': {
+                '$gt': 1
+            }
+        }                    
+    },
+    {
+        '$count': 'trips_longer_than_1_hour'
+    }
+])
+```
+
+Come previsto, aggiungere un idice sia `start_timestamp` che su `end_timestamp` le performance non migliorano.
+
+### #7: Numero di viaggi più lunghi di 10 minuti e più brevi di 2 miglia
+
+**MySQL**
+
+```sql
+SELECT count(*) FROM rides 
+WHERE seconds > 10*60 AND miles > 2
+```
+
+**MongoDB**
+
+```js
+db.rides.find({
+    'trip_seconds': {
+        '$gt': 10*60
+    },
+    'trip_miles': {
+        '$gt': 2
+    }
+}).count()
+```
+
+Aggiungere un indice su `miles` e uno su `seconds` non aiuta le performance. E' necessario aggiungere un indice composto su `(miles, seconds)` per ottenre un guadagno di performance.
+
+Come si vede nel query plan di MySQL, gli indici singoli non vengono considerati per questa `WHERE` a doppia condizione:
+
+![](.images/composite-index.jpg)
+
+Con l'indice composto:
+
+![](.images/composite-index-after.png)
+
 
