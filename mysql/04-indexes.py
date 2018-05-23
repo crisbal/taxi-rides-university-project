@@ -7,7 +7,7 @@ from utils import make_connection, chunker
 
 
 INDEXES = {
-    'rides': ['miles', 'seconds', 'start_timestamp', 'end_timestamp'],
+    'rides': ['miles', 'seconds', 'start_timestamp', 'end_timestamp', ('miles', 'seconds')],
     'payments': ['fare']
 }
 
@@ -26,12 +26,20 @@ if __name__ == '__main__':
             if drop_index:
                 print(f"\tDropping index on column {column}")       
                 try:     
-                    cursor.execute(f'DROP INDEX `{column}` ON `{table}`')
-                except Exception:
+                    if isinstance(column, str):
+                        cursor.execute(f'DROP INDEX `{column}` ON `{table}`')
+                    else:
+                        cursor.execute(f'DROP INDEX `{"_".join(column)}` ON `{table}`')                        
+                except Exception as e:
+                    print(e)
                     print("\tIndex does not exists")
             else:
                 print(f"\tCreating index on column {column}")
-                try:     
-                    cursor.execute(f'ALTER TABLE `{table}` ADD INDEX `{column}` (`{column}`)')
-                except Exception:
+                try:
+                    if isinstance(column, str):
+                        cursor.execute(f'ALTER TABLE `{table}` ADD INDEX `{column}` (`{column}`)')
+                    else:
+                        cursor.execute(f'ALTER TABLE `{table}` ADD INDEX `{"_".join(column)}` ({",".join(column)})')
+                except Exception as e:
+                    print(e)
                     print("\tIndex already exists")                    
