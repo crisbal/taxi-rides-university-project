@@ -38,14 +38,14 @@ def clean_ride(ride, column_remapping):
     else:
         pickup_latitude = float(column_remapping['pickup_latitude'][ride['pickup_latitude']])
         pickup_longitude = float(column_remapping['pickup_longitude'][ride['pickup_longitude']])
-        ride["pickup_location"] = "POINT({} {})".format(pickup_latitude, pickup_longitude)
+        ride["pickup_location"] = "POINT({} {})".format(pickup_longitude, pickup_latitude)
    
     if ride['dropoff_latitude'] is None or ride['dropoff_longitude'] is None:
         ride['dropoff_location'] = None
     else:
         dropoff_latitude = float(column_remapping['dropoff_latitude'][ride['dropoff_latitude']])
         dropoff_longitude = float(column_remapping['dropoff_longitude'][ride['dropoff_longitude']])
-        ride["dropoff_location"] = "POINT({} {})".format(dropoff_latitude, dropoff_longitude)
+        ride["dropoff_location"] = "POINT({} {})".format(dropoff_longitude, dropoff_latitude)
     
     ride['taxi_id'] = int(ride['taxi_id']) if ride['taxi_id'] != '' else None 
     ride['company'] = int(ride['company']) if ride['company'] != '' else None 
