@@ -169,6 +169,8 @@ Anche qui ho preferito usare il metodo `insert_many` al posto che `insert` al fi
 
 Ogni query è stata eseguita per 10 volte e per ogni esecuzione si è tenuto traccia del tempo. In seguito è stato calcolato il tempo medio e la deviazione standard. Ogni query è stata eseguita con e senza indici appositi.
 
+![](.images/benchmarks.png)
+
 ### #1: Numero di corse più lunghe di 4 Miglia
 
 
@@ -188,8 +190,29 @@ db.rides.find({
 }).count()
 ```
 
-Ottimizzata creando indice sul campo `miles`.
+Ottimizzata creando indice sul campo `miles`. 
 
+* MySQL
+    * Mean execution time: 5.57s
+    * Max execution time: 7.048s
+    * Min execution time: 5.039s
+    * MySQL (Indexed)
+        * Mean execution time: 1.036s
+        * Max execution time: 1.115s
+        * Min execution time: 1.002s
+    * Speedup with indexes: 5.38x
+* Mongo
+    * Mean execution time: 17.846s
+    * Max execution time: 22.364s
+    * Min execution time: 16.576s
+    * Mongo (Indexed)
+        * Mean execution time: 0.925s
+        * Max execution time: 1.219s
+        * Min execution time: 0.84s
+    * Speedup with indexes: 19.29x
+* MySQL vs Mongo
+    * MySQL is 3.2 times faster than MongoDB
+    * MySQL (Indexed) is 0.89 times faster than MongoDB (Indexed)
 
 ### #2: Prezzo medio delle corse
 
@@ -216,6 +239,29 @@ db.rides.aggregate([
 Solo su MySQL aggiungendo un indice sulla colonna `payments.fare` si ottiene un miglioramento (seppur minimale) delle performance. E' osservabile infatti che aggiungendo l'indice, nonostante non si tratti di un'operazione di ricerca, questo indice viene usato nell'operazione di `AVG()` come mostrato dall'EXPLAIN della query:
 
 ![](.images/index_avg_fare.png)
+
+* MySQL
+    * Mean execution time: 5.869s
+    * Max execution time: 6.512s
+    * Min execution time: 5.14s
+    * MySQL (Indexed)
+        * Mean execution time: 5.374s
+        * Max execution time: 5.801s
+        * Min execution time: 5.155s
+    * Speedup with indexes: 1.09x
+* Mongo
+    * Mean execution time: 26.546s
+    * Max execution time: 28.101s
+    * Min execution time: 25.535s
+    * Mongo (Indexed)
+        * Mean execution time: 27.977s
+        * Max execution time: 29.575s
+        * Min execution time: 26.459s
+    * Speedup with indexes: 0.95x
+* MySQL vs Mongo
+    * MySQL is 4.52 times faster than MongoDB
+    * MySQL (Indexed) is 5.21 times faster than MongoDB (Indexed)
+
 
 
 ### #3: Le prime 10 compagnie che hanno fatto più viaggi
@@ -251,6 +297,30 @@ db.rides.aggregate([
 ])
 ```
 
+* MySQL
+    * Mean execution time: 2.807s
+    * Max execution time: 4.421s
+    * Min execution time: 2.504s
+    * MySQL (Indexed)
+        * Mean execution time: 3.786s
+        * Max execution time: 7.486s
+        * Min execution time: 3.096s
+    * Speedup with indexes: 0.74x
+* Mongo
+    * Mean execution time: 37.189s
+    * Max execution time: 39.741s
+    * Min execution time: 35.448s
+    * Mongo (Indexed)
+        * Mean execution time: 39.059s
+        * Max execution time: 44.927s
+        * Min execution time: 34.439s
+    * Speedup with indexes: 0.95x
+* MySQL vs Mongo
+    * MySQL is 13.25 times faster than MongoDB
+    * MySQL (Indexed) is 10.32 times faster than MongoDB (Indexed)
+
+
+
 ### #5: Numero di corse tra il 1° e il 12° Gennaio 2016
 
 **MySQL**
@@ -275,6 +345,30 @@ db.rides.find([
 ```
 
 Ottimizzata aggiungendo un indice su `start_timestamp`
+
+
+* MySQL
+    * Mean execution time: 5.739s
+    * Max execution time: 6.025s
+    * Min execution time: 5.474s
+    * MySQL (Indexed)
+        * Mean execution time: 0.192s
+        * Max execution time: 0.221s
+        * Min execution time: 0.182s
+    * Speedup with indexes: 29.83x
+* Mongo
+    * Mean execution time: 16.489s
+    * Max execution time: 17.644s
+    * Min execution time: 15.578s
+    * Mongo (Indexed)
+        * Mean execution time: 0.137s
+        * Max execution time: 0.185s
+        * Min execution time: 0.131s
+    * Speedup with indexes: 120.07x
+* MySQL vs Mongo
+    * MySQL is 2.87 times faster than MongoDB
+    * MySQL (Indexed) is 0.71 times faster than MongoDB (Indexed)
+
 
 ### #6: Numero di viaggi più lunghi di 1 ora (lunghezza calcolata come time difference)
 
@@ -316,6 +410,29 @@ db.rides.aggregate([
 
 Come previsto, aggiungere un idice sia `start_timestamp` che su `end_timestamp` le performance non migliorano.
 
+* MySQL
+    * Mean execution time: 9.544s
+    * Max execution time: 10.186s
+    * Min execution time: 9.111s
+    * MySQL (Indexed)
+        * Mean execution time: 12.814s
+        * Max execution time: 15.666s
+        * Min execution time: 11.024s
+    * Speedup with indexes: 0.74x
+* Mongo
+    * Mean execution time: 39.04s
+    * Max execution time: 41.224s
+    * Min execution time: 37.034s
+    * Mongo (Indexed)
+        * Mean execution time: 36.864s
+        * Max execution time: 39.278s
+        * Min execution time: 34.675s
+    * Speedup with indexes: 1.06x
+* MySQL vs Mongo
+    * MySQL is 4.09 times faster than MongoDB
+    * MySQL (Indexed) is 2.88 times faster than MongoDB (Indexed)
+
+
 ### #7: Numero di viaggi più lunghi di 10 minuti e più brevi di 2 miglia
 
 **MySQL**
@@ -340,7 +457,7 @@ db.rides.find({
 
 Aggiungere un indice su `miles` e uno su `seconds` non aiuta le performance. E' necessario aggiungere un indice composto su `(miles, seconds)` per ottenre un guadagno di performance.
 
-Come si vede nel query plan di MySQL, gli indici singoli non vengono considerati per questa `WHERE` a doppia condizione:
+Come si vede nel query plan di MySQL (ma una situazione analoga vale anche per MongoDB), gli indici singoli non vengono considerati per questa `WHERE` a doppia condizione:
 
 ![](.images/composite-index.jpg)
 
@@ -349,3 +466,60 @@ Con l'indice composto:
 ![](.images/composite-index-after.png)
 
 
+* MySQL
+    * Mean execution time: 8.005s
+    * Max execution time: 9.352s
+    * Min execution time: 7.202s
+    * MySQL (Indexed)
+        * Mean execution time: 4.26s
+        * Max execution time: 5.681s
+        * Min execution time: 1.864s
+    * Speedup with indexes: 1.88x
+* Mongo
+    * Mean execution time: 20.011s
+    * Max execution time: 23.232s
+    * Min execution time: 18.09s
+    * Mongo (Indexed)
+        * Mean execution time: 3.77s
+        * Max execution time: 4.174s
+        * Min execution time: 3.599s
+    * Speedup with indexes: 5.31x
+* MySQL vs Mongo
+    * MySQL is 2.5 times faster than MongoDB
+    * MySQL (Indexed) is 0.88 times faster than MongoDB (Indexed)
+
+
+## Dimensioni Indici
+
+Per MySQL è possibile ottenere la dimensione degli indici con [questa query](https://stackoverflow.com/a/36573801/2083717):
+
+```sql
+SELECT database_name, table_name, index_name, 
+        round(stat_value*@@innodb_page_size/1024/1024, 2) as size_in_mb
+FROM mysql.innodb_index_stats
+WHERE stat_name = 'size' 
+    AND index_name != 'PRIMARY'
+ORDER BY size_in_mb DESC
+```
+
+![](./.images/indexes-mysql.png)
+
+Per MongoDB invece è possibile usare il comando `db.rides.stats()`:
+
+## Dimensione Tabelle
+
+[MySQL](https://stackoverflow.com/questions/9620198/how-to-get-the-sizes-of-the-tables-of-a-mysql-database)
+
+```sql
+SELECT TABLE_NAME AS "Table Name", 
+        table_rows AS "Quant of Rows", 
+        ROUND( ( data_length + index_length ) /1024/1024, 2 ) AS "Total Size Mb" 
+FROM information_schema.TABLES 
+WHERE information_schema.TABLES.table_schema = 'taxi-rides' 
+LIMIT 0 , 30
+```
+
+![](./.images/tables-mysql.png)
+
+
+Per MongoDB invece è possibile usare il comando `db.rides.stats()`:
