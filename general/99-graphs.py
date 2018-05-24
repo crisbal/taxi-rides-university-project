@@ -67,4 +67,4 @@ if __name__ == '__main__':
     ax.autoscale_view()
 
     plt.show()
-    fig.savefig(folder + '/../.images/benchmarks.png', dpi=fig.dpi*3)
+    fig.savefig(folder + '/../.images/benchmarks_final.png', dpi=fig.dpi*3)

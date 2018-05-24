@@ -169,7 +169,7 @@ Anche qui ho preferito usare il metodo `insert_many` al posto che `insert` al fi
 
 Ogni query è stata eseguita per 10 volte e per ogni esecuzione si è tenuto traccia del tempo. In seguito è stato calcolato il tempo medio e la deviazione standard. Ogni query è stata eseguita con e senza indici appositi.
 
-![](.images/benchmarks.png)
+![](.images/benchmarks_final.png)
 
 ### #1: Numero di corse più lunghe di 4 Miglia
 
