@@ -6,6 +6,18 @@ dataset:
 import-mysql:
 	python mysql/01-setup.py 
 	python mysql/02-import.py
+	python mysql/02b-import-rides.py 2016_01
+	python mysql/02b-import-rides.py 2016_02
+	python mysql/02b-import-rides.py 2016_03
+	python mysql/02b-import-rides.py 2016_04
+	python mysql/02b-import-rides.py 2016_05
+	python mysql/02b-import-rides.py 2016_06
+	python mysql/02b-import-rides.py 2016_07
+	python mysql/02b-import-rides.py 2016_08
+	python mysql/02b-import-rides.py 2016_09
+	python mysql/02b-import-rides.py 2016_10
+	python mysql/02b-import-rides.py 2016_11
+	python mysql/02b-import-rides.py 2016_12
 
 import-mongo:
 	python mongo/01-setup.py
