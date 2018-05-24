@@ -506,6 +506,9 @@ ORDER BY size_in_mb DESC
 
 Per MongoDB invece è possibile usare il comando `db.rides.stats()`:
 
+![](./.images/indexes-mongo.png)
+
+
 ## Dimensione Tabelle
 
 [MySQL](https://stackoverflow.com/questions/9620198/how-to-get-the-sizes-of-the-tables-of-a-mysql-database)
@@ -523,3 +526,5 @@ LIMIT 0 , 30
 
 
 Per MongoDB invece è possibile usare il comando `db.rides.stats()`:
+
+![](./.images/tables-mongo.png)
