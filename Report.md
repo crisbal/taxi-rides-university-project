@@ -1,6 +1,29 @@
+# Modellazione, importazione, ottimizzazione query su un dataset in MySQL e MongoDB
+
+Relazione di **Cristian Baldi**, 806830, per l'esame di Complementi di Base di Dati (anno accademico 2017-2018)
+
+Link al codice sorgente del mio progetto contenente codice per preprocessing, importazione, esecuzione query e raccolta statistiche: [github.com/crisbal/taxi-rides-university-project](https://github.com/crisbal/taxi-rides-university-project) 
+
+Istruzioni per eseguire gli script e riprodurre il progetto [disponibili qui](https://github.com/crisbal/taxi-rides-university-project/blob/master/README.md)
+
 ## Introduzione
 
-Ho scelto di lavorare su un dataset rappresentante le corse di Taxi della città di Chicago nel 2016. Ho per prima cosa analizzato il dataset per capire come convenisse modellare, modellato la realtà sia in MySQL che MongoDB, svolto ed ottimizzato alcune query, confrontando le performance tra i due DBMS.
+Ho scelto di lavorare su un dataset rappresentante le corse di [Taxi della città di Chicago nel 2016](https://www.kaggle.com/chicago/chicago-taxi-rides-2016). Ho per prima cosa analizzato il dataset per capire come convenisse modellare, modellato la realtà sia in MySQL che MongoDB, scritto ed ottimizzato alcune query, confrontando le performance tra i due DBMS.
+
+## Dettagli tecnici
+
+* MySQL:
+    * Versione: 8.0.11 (Tag docker `mysql:latest`)
+    * Configurazioni aggiuntive: abilitato il [supporto ad `utf-8`](https://github.com/crisbal/taxi-rides-university-project/blob/master/.config/mysql/my.cnf)
+* MongoDB:
+    * Versione: 3.6 (Tag docker `mongo:latest`)
+    * Configurazioni aggiuntive: nessuna
+* Specifiche computer di esecuzione benchmark:
+    * Processore: Intel i5-5300U @ 2.9Ghz
+    * RAM: 8GB
+    * SSD: Samsung 850 Evo
+    * Sistema Operativo: Arch Linux (Kernel 4.16)
+    * Docker: Versione 18.05
 
 ## Dataset
 
@@ -133,7 +156,7 @@ Ho praticamente agito come per MySQL, ad eccezzione per non aver reso `payment_t
 
 Sia per MySQL che per MongoDB ho creato degli script in Python per creare le tabelle/collezioni e per importare i dati.
 
-Gli script in questione sono 
+Gli [script](https://github.com/crisbal/taxi-rides-university-project) in questione sono 
 
 * `general/00-dataset.py` per il preprocessing del dataset
 * `{mysql|mongo}/01-setup.py` per la creazione delle tabelle/collezioni 
@@ -165,9 +188,18 @@ Anche qui ho preferito usare il metodo `insert_many` al posto che `insert` al fi
 | MySQL | 1.7M            | 3m19s           |
 | Mongo | 1.7M            | 3m1s            |
 
+Nota bene: si potrebbero ottenere performance migliori rendendo l'importazione di MongoDB multi-threaded ma non ho deciso di implementarla.
+
 ## Query
 
-Ogni query è stata eseguita per 10 volte e per ogni esecuzione si è tenuto traccia del tempo. In seguito è stato calcolato il tempo medio e la deviazione standard. Ogni query è stata eseguita con e senza indici appositi.
+Ogni query è stata eseguita per 10 volte e per ogni esecuzione si è tenuto traccia del tempo. In seguito è stato calcolato il tempo medio e la deviazione standard. Ogni query è stata eseguita con e senza indici appositi. Per conteggiare il tempo di esecuzione sono stati usati dei semplici `timer` di Python che conteggiavano il tempo trascorso tra il submit della query e l'ottenimento del risultato. 
+
+Gli [script](https://github.com/crisbal/taxi-rides-university-project) usati in questa sezione sono:
+
+* `{mysql|mongo}/03-queries.py` per l'esecuzione delle query e la raccolta dei tempi di esecuzione 
+* `{mysql|mongo}/04-index.py` per la creazione e l'eliminazione di indici 
+* `general/98-detailed-results.py` per la generazione delle statistiche e per il confronto tra i due DBMS
+* `general/99-graphs.py` per la generazione del grafico
 
 ![](.images/benchmarks_final.png)
 
@@ -297,6 +329,8 @@ db.rides.aggregate([
 ])
 ```
 
+Non è stato possibile ottimizzare questa query, in quanto si tratta semplicemente di query di JOIN ed aggregazione. E' interessante notare la disparità di performance tra MySQL e Mongo. MySQL è 13 volte più veloce.
+
 * MySQL
     * Mean execution time: 2.807s
     * Max execution time: 4.421s
@@ -318,7 +352,6 @@ db.rides.aggregate([
 * MySQL vs Mongo
     * MySQL is 13.25 times faster than MongoDB
     * MySQL (Indexed) is 10.32 times faster than MongoDB (Indexed)
-
 
 
 ### #5: Numero di corse tra il 1° e il 12° Gennaio 2016
@@ -344,7 +377,7 @@ db.rides.find([
 ]).count()
 ```
 
-Ottimizzata aggiungendo un indice su `start_timestamp`
+Ottimizzata aggiungendo un indice su `start_timestamp`.
 
 
 * MySQL
@@ -408,7 +441,7 @@ db.rides.aggregate([
 ])
 ```
 
-Come previsto, aggiungere un idice sia `start_timestamp` che su `end_timestamp` le performance non migliorano.
+Come previsto, aggiungendo un imdice sia `start_timestamp` che su `end_timestamp` le performance non migliorano.
 
 * MySQL
     * Mean execution time: 9.544s
@@ -431,7 +464,6 @@ Come previsto, aggiungere un idice sia `start_timestamp` che su `end_timestamp` 
 * MySQL vs Mongo
     * MySQL is 4.09 times faster than MongoDB
     * MySQL (Indexed) is 2.88 times faster than MongoDB (Indexed)
-
 
 ### #7: Numero di viaggi più lunghi di 10 minuti e più brevi di 2 miglia
 
@@ -528,3 +560,9 @@ LIMIT 0 , 30
 Per MongoDB invece è possibile usare il comando `db.rides.stats()`:
 
 ![](./.images/tables-mongo.png)
+
+## Conclusioni
+
+Come mi aspettavo, MySQL batte notevolmente MongoDB per quanto riguarda la performance senza indici e nell'esecuzione delle aggregazioni e join. La performance con gli indici è abbastanza simile, alcune volte meglio MongoDB, altre meglio MySQL. Chiaramente a seconda del caso d'uso e delle necessità la scelta ricade, oltre che sull'esecuzione delle query anche su altri fattori come ad esempio la facilità di scalabilità e di replicazione, il supporto alle transazioni ed altro.
+
+Inoltre i dati raccolti sono indicativi e non fedeli a quello che potrebbe essere l'utilizzo reale di una base di dati di questo tipo. Ho svolto operazioni di batch-import e di sola lettura, quando per la realtà rappresentata, tutti questi dati vengono inseriti in tempo reale man mano che le corse sono completate.
