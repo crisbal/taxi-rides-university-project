@@ -49,3 +49,9 @@ graphs:
 	test -f benchmarks.json
 	python general/98-detailed-results.py
 	python general/99-graphs.py
+
+query-mongo:
+	docker exec -ti taxi-rides_taxi-rides-mongo_1 mongo taxiRides -u root -p password
+
+query-mysql:
+	docker exec -ti taxi-rides_taxi-rides-mysql_1 mysql -u root -ppassword

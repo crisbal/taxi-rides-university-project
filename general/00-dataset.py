@@ -6,6 +6,7 @@
 import os
 import csv
 import json
+from itertools import islice
 
 if __name__ == "__main__":
     folder, _ = os.path.split(__file__)
@@ -22,6 +23,10 @@ if __name__ == "__main__":
         print(f"Finding data in {FILE}")
         with open(folder + '/../dataset/chicago_taxi_trips_' + FILE + '.csv') as csvfile:
             rides = csv.DictReader(csvfile)
+            
+            if CONFIG['IMPORT_LIMIT'] > 0:
+                rides = islice(rides, CONFIG['IMPORT_LIMIT'])
+
             for ride in rides:
                 taxi_id = None
                 if ride['taxi_id'] != '': 
